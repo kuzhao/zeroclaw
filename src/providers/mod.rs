@@ -17,6 +17,7 @@
 //! in [`create_provider_with_url`]. See `AGENTS.md` §7.1 for the full change playbook.
 
 pub mod anthropic;
+pub mod azure_openai;
 pub mod bedrock;
 pub mod compatible;
 pub mod copilot;
@@ -177,6 +178,13 @@ pub(crate) fn is_qianfan_alias(name: &str) -> bool {
 
 pub(crate) fn is_doubao_alias(name: &str) -> bool {
     matches!(name, "doubao" | "volcengine" | "ark" | "doubao-cn")
+}
+
+pub(crate) fn is_azure_openai_alias(name: &str) -> bool {
+    matches!(
+        name,
+        "azure-openai" | "azure_openai" | "azureopenai" | "azure"
+    )
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -869,6 +877,10 @@ fn resolve_provider_credential(name: &str, credential_override: Option<&str>) ->
         // Bedrock uses AWS AKSK from env vars (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY),
         // not a single API key. Credential resolution happens inside BedrockProvider.
         "bedrock" | "aws-bedrock" => return None,
+        // Azure OpenAI: API key is optional (Azure AD OAuth is supported).
+        // Return None here so the AzureOpenAiProvider can handle credential
+        // resolution (API key or service-principal/managed-identity) internally.
+        name if is_azure_openai_alias(name) => return None,
         "hunyuan" | "tencent" => vec!["HUNYUAN_API_KEY"],
         name if is_qianfan_alias(name) => vec!["QIANFAN_API_KEY"],
         name if is_doubao_alias(name) => vec!["ARK_API_KEY", "DOUBAO_API_KEY"],
@@ -1148,6 +1160,9 @@ fn create_provider_with_url_and_options(
             )
         )),
         "bedrock" | "aws-bedrock" => Ok(Box::new(bedrock::BedrockProvider::new())),
+        name if is_azure_openai_alias(name) => Ok(Box::new(
+            azure_openai::AzureOpenAiProvider::new(api_url, api_key),
+        )),
         name if is_qwen_oauth_alias(name) => {
             let base_url = api_url
                 .map(str::trim)

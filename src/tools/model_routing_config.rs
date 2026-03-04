@@ -1160,6 +1160,9 @@ mod tests {
             .unwrap();
         assert_eq!(route["api_key_configured"], json!(true));
 
-        assert_eq!(output["agents"]["voice_helper"]["api_key_configured"], json!(true));
+        assert_eq!(
+            output["agents"]["voice_helper"]["api_key_configured"],
+            json!(true)
+        );
     }
 }
